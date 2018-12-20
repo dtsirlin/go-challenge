@@ -3,10 +3,10 @@ A web application in Golang that exposes a REST endpoint that validates user cre
 
 Author: Daniel Tsirlin
 ## Setup
-// TODO: everything
+- Docker must be installed on the machine
 
 ### Pre-requisites
-// TODO: everything
+- There must be a working internet connection on the machine this is run.
  
 ### Build
 // TODO: everything
@@ -22,7 +22,8 @@ How to test and run the application.
 // TODO: everything
 
 ## Assumptions
+- User/pass credentials created within server command
 
 ---
 
-###### README Last updated: 18/12/2018
+###### README Last updated: 20/12/2018
