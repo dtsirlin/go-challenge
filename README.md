@@ -11,10 +11,17 @@ How to set up the environment to run the application.
 - There must be a working internet connection on the machine this is run.
 
 ## Running
-How to run the application.
+How to build, run and stop the application.
+
+### Build Application
+- Execute ```$ make build``` in the root directory of the repo
 
 ### Run Application
-- Execute the makefile
+- Once the application has been built as a docker container, execute ```$ make run``` in the root directory of the repo
+- You should now be able to hit the routes, for instance in your browser or in Postman
+
+### Stop the Application
+- Once running, either exit out of the run execution or execute ```$ make stop``` in another shell while in the root directory of the repo
 
 ## Assumptions
 - Username and password credential pairs created within server command
@@ -23,4 +30,4 @@ How to run the application.
 
 ---
 
-###### README Last updated: 20/12/2018
+###### README Last updated: 21/12/2018
