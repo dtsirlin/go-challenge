@@ -2,27 +2,25 @@
 A web application in Golang that exposes a REST endpoint that validates user credentials and returns JWT Token.
 
 Author: Daniel Tsirlin
+
 ## Setup
-// TODO: everything
+How to set up the environment to run the application.
 
 ### Pre-requisites
-// TODO: everything
- 
-### Build
-// TODO: everything
+- Docker must be installed on the machine.
+- There must be a working internet connection on the machine this is run.
 
 ## Running
-How to test and run the application.
-
-### Test
-// TODO: everything
+How to run the application.
 
 ### Run Application
-
-// TODO: everything
+- Execute the makefile
 
 ## Assumptions
+- Username and password credential pairs created within server command
+- Username and passwords are case sensitive
+- To load protected endpoint, a valid JWT token is one that is a valid jwt token which is a non-expired access token associated to valid users
 
 ---
 
-###### README Last updated: 18/12/2018
+###### README Last updated: 20/12/2018
