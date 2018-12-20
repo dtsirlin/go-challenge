@@ -18,7 +18,7 @@ type User struct {
 
 var users []User
 
-var hmacSampleSecret = []byte("danssecret")
+var hmacSecret = []byte("danssecret")
 
 //AddUsers adds a set of users to the users, an array of User
 func AddUsers() {
@@ -26,32 +26,35 @@ func AddUsers() {
 	// users = append(users, User{Username: <username>, Password: <password>})
 	users = append(users, User{Username: "dantsirlin@gmail.com", Password: "testpass"})
 	users = append(users, User{Username: "seconduser@gmail.com", Password: "password"})
+	users = append(users, User{Username: "a-real-person@gmail.com", Password: "1234567890"})
 }
 
 //ValidateUser validates that input parameters of username and password are valid credentials and returns access and refresh token for credentials
 func ValidateUser(w http.ResponseWriter, r *http.Request) {
-	// if username parameter matches a username field for a user in list of users:
-	// -- check if password parameter matches password for given user
-	// -- if yes, write to responsewriter access token valid for 24hr and refresh token valid for 7 days
-	// -- if no, write to responsewriter "Invalid credentials"
-	// if username parameter matches no users, write to responsewriter "Invalid credentials"
 	params := mux.Vars(r)
 	foundUser := false
 	for _, user := range users {
 		if user.Username == params["username"] {
-			// json.NewEncoder(w).Encode(item)
 			if user.Password == params["password"] {
 				fmt.Fprintf(w, "Access granted to "+params["username"]+"\n")
+
 				accessTokenString, accessErr := NewAccessToken(params["username"])
+				fmt.Fprintf(w, "access token:\n")
+
 				if accessErr != nil {
 					fmt.Fprintf(w, accessErr.Error())
+				} else {
+					fmt.Fprintln(w, accessTokenString)
 				}
+
 				refreshTokenString, refreshErr := NewRefreshToken(params["username"])
+				fmt.Fprintf(w, "refresh token:\n")
+
 				if refreshErr != nil {
 					fmt.Fprintf(w, refreshErr.Error())
+				} else {
+					fmt.Fprintln(w, refreshTokenString)
 				}
-				fmt.Fprintln(w, "access token:\n"+accessTokenString)
-				fmt.Fprintln(w, "refresh token:\n"+refreshTokenString)
 			} else {
 				fmt.Fprintf(w, "Invalid credentials")
 			}
@@ -68,11 +71,11 @@ func NewAccessToken(username string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":      "access",
 		"username": username,
-		"iat":      time.Now().Unix(),
-		"exp":      time.Now().Unix() + (60 * 60 * 24),
+		"iat":      float64(time.Now().Unix()),
+		"expiss":   float64(time.Now().Unix() + (60 * 60 * 24)),
 	})
 
-	tokenString, err := token.SignedString(hmacSampleSecret)
+	tokenString, err := token.SignedString(hmacSecret)
 
 	return tokenString, err
 }
@@ -86,9 +89,68 @@ func NewRefreshToken(username string) (string, error) {
 		"exp":      time.Now().Unix() + (7 * 60 * 60 * 24),
 	})
 
-	tokenString, err := token.SignedString(hmacSampleSecret)
+	tokenString, err := token.SignedString(hmacSecret)
 
 	return tokenString, err
+}
+
+//ValidateJWT check is jwt is valid if so, load protected endpoint
+func ValidateJWT(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	tokenString := params["tokenString"]
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return hmacSecret, nil
+	})
+
+	if err != nil {
+		fmt.Fprintf(w, "Not a valid token")
+	} else {
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			// big break through!  would've been nice if i knew that part of checking for valid token
+			// is that if claim "exp" exists and that datetime is less than current time, thus expired token,
+			// the token counts as invalid.
+			//
+			// my catcher for comparing the expiration time to current time only worked when i had the claim name
+			// differ to "exp".  this catcher will be in a non-final commit but be ommitted later
+
+			var expTime float64
+
+			for key, val := range claims {
+				if key == "expiss" {
+					expTime = val.(float64)
+				}
+			}
+
+			fmt.Println(expTime)
+
+			if int64(expTime) < time.Now().Unix() {
+				fmt.Println("EXPIRED TOKEN")
+			}
+
+			if claims["sub"] != "access" {
+				fmt.Fprintf(w, "Not access token.")
+				// } else if expTime < time.Now().Unix() {
+				// 	fmt.Fprintf(w, "Expired token.")
+			} else {
+				userFound := false
+				for _, user := range users {
+					if user.Username == claims["username"] {
+						fmt.Fprintf(w, "Access granted, "+claims["username"].(string)+"!")
+						userFound = true
+					}
+				}
+
+				if !userFound == true {
+					fmt.Fprintf(w, "Access denied.")
+				}
+			}
+		}
+	}
 }
 
 func main() {
@@ -96,7 +158,6 @@ func main() {
 	AddUsers()
 	// ideally, there any other routes would display the instructions of how to use the two routes below
 	router.HandleFunc("/validate/{username}/{password}", ValidateUser).Methods("GET")
-	// todo: a route that takes in jwt token and loads screen showing welcome to that user/pass
-	// router.HandleFunc("/authjwt", ValidateJWT).Methods.("GET")
+	router.HandleFunc("/authjwt/{tokenString}", ValidateJWT).Methods("GET")
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
