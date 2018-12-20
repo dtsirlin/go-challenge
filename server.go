@@ -72,7 +72,7 @@ func NewAccessToken(username string) (string, error) {
 		"sub":      "access",
 		"username": username,
 		"iat":      float64(time.Now().Unix()),
-		"expiss":   float64(time.Now().Unix() + (60 * 60 * 24)),
+		"exp":      float64(time.Now().Unix() + (60 * 60 * 24)),
 	})
 
 	tokenString, err := token.SignedString(hmacSecret)
@@ -107,8 +107,16 @@ func ValidateJWT(w http.ResponseWriter, r *http.Request) {
 		return hmacSecret, nil
 	})
 
+	// error exists if not a valid jwt token
+	// - incorrect format (3 strings separated by 2 periods and decodes correctly)
+	// - expired token
+	//
+	// return "Access Denied" for any processing of jwt token that isn't a valid token giving access to valid user
+	// - invalid token (reasons above)
+	// - valid but not access token
+	// - valid and access token, but not associated with a valid user
 	if err != nil {
-		fmt.Fprintf(w, "Not a valid token")
+		fmt.Fprintf(w, "Access Denied")
 	} else {
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 			// big break through!  would've been nice if i knew that part of checking for valid token
@@ -118,25 +126,7 @@ func ValidateJWT(w http.ResponseWriter, r *http.Request) {
 			// my catcher for comparing the expiration time to current time only worked when i had the claim name
 			// differ to "exp".  this catcher will be in a non-final commit but be ommitted later
 
-			var expTime float64
-
-			for key, val := range claims {
-				if key == "expiss" {
-					expTime = val.(float64)
-				}
-			}
-
-			fmt.Println(expTime)
-
-			if int64(expTime) < time.Now().Unix() {
-				fmt.Println("EXPIRED TOKEN")
-			}
-
-			if claims["sub"] != "access" {
-				fmt.Fprintf(w, "Not access token.")
-				// } else if expTime < time.Now().Unix() {
-				// 	fmt.Fprintf(w, "Expired token.")
-			} else {
+			if claims["sub"] == "access" {
 				userFound := false
 				for _, user := range users {
 					if user.Username == claims["username"] {
@@ -148,6 +138,8 @@ func ValidateJWT(w http.ResponseWriter, r *http.Request) {
 				if !userFound == true {
 					fmt.Fprintf(w, "Access denied.")
 				}
+			} else {
+				fmt.Fprintf(w, "Access denied.")
 			}
 		}
 	}
